@@ -11,7 +11,7 @@
    (Либо вставьте его прямо на сайте по кнопке «⚙️ Подключить Project URL Supabase»).
    ========================================================================= */
 window.LAURUM_CONFIG = {
-  SUPABASE_URL: "TODO_PASTE_YOUR_SUPABASE_PROJECT_URL",
+  SUPABASE_URL: "https://zpmapedzbbrfxlmuncbd.supabase.co/rest/v1/",
   SUPABASE_ANON_KEY: "sb_publishable_Q8bp5yDcT3g-b0K7tnvbfw_RYFYDkMi",
 
   // Ссылка на ваш второй сайт (ERP Персонала) после публикации на GitHub Pages
