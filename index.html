@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>L'AURUM — Сайт для Гостей (Репозиторий №1: Меню, Бронь стола с предоплатой 50%, Живой трекер)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+  <!-- Конфигурация Supabase (с вашим ключом sb_publishable_Q8bp5yDcT3g-b0K7tnvbfw_RYFYDkMi) и ядро общей БД -->
+  <script src="./js/config.js"></script>
+  <script src="./js/core.js"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ВЕРХНЯЯ ПЛАШКА ОБЩЕЙ БАЗЫ SUPABASE И ПЕРЕХОДА НА 2-Й РЕПОЗИТОРИЙ -->
+  <div class="bg-slate-900 text-white text-xs py-2.5 px-4">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-bold">РЕПОЗИТОРИЙ №1: САЙТ ДЛЯ ГОСТЕЙ</span>
+        <span id="sb-status-pill" class="text-slate-300">● Ключ sb_publishable_... подключён</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button type="button" id="open-sb-btn" class="text-amber-300 hover:underline font-bold">
+          ⚙️ Настроить Project URL Supabase
+        </button>
+        <a
+          href="../site-2-staff-erp/index.html"
+          id="staff-site-link"
+          class="px-3.5 py-1 rounded-lg bg-white text-slate-900 font-bold hover:bg-amber-400 transition flex items-center gap-1.5 shadow"
+        >
+          <span>🏢 Открыть Сайт №2: ERP Персонала (Повар / Официант / Бухгалтер / Босс) →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ГЛАВНАЯ ШАПКА КЛИЕНТСКОГО САЙТА -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
+      <a href="#top" class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-amber-500 text-white font-extrabold text-xl flex items-center justify-center shadow-sm">
+          L'A
+        </div>
+        <div>
+          <span class="font-extrabold text-xl tracking-tight text-slate-900 block leading-none">L'AURUM</span>
+          <span class="text-xs text-slate-500 block mt-0.5">Ресторан в зале · Единая БД Supabase</span>
+        </div>
+      </a>
+
+      <nav class="hidden md:flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl">
+        <a href="#sec-menu" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-800 hover:bg-white transition">
+          1. Меню и Аллергены
+        </a>
+        <a href="#sec-booking" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-800 hover:bg-white transition">
+          2. Бронь стола (Предоплата 50%)
+        </a>
+        <a href="#sec-tracker" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-800 hover:bg-white transition">
+          3. Живой трекер и QR-Счёт
+        </a>
+      </nav>
+
+      <div class="flex items-center gap-2.5">
+        <button
+          type="button"
+          id="guest-profile-btn"
+          class="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-bold transition flex items-center gap-2"
+        >
+          <span>👤</span>
+          <span id="guest-name-header">Алия</span>
+          <span id="guest-bonus-header" class="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-xs">4 500 ₸</span>
+        </button>
+
+        <button
+          type="button"
+          id="open-cart-btn"
+          class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-sm transition flex items-center gap-2"
+        >
+          <span>🛒 Мой заказ</span>
+          <span id="cart-count-badge" class="px-2 py-0.5 rounded-lg bg-slate-900 text-white text-xs">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top" class="flex-1 max-w-7xl w-full mx-auto px-4 py-8 space-y-12">
+
+    <!-- БАННЕР С 3 ПРОСТЫМИ ШАГАМИ -->
+    <section class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+            ✨ Как работает ресторан L'AURUM — просто в 3 шага:
+          </div>
+          <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+            Закажите блюда к приходу, забронируйте стол с предоплатой 50% и следите за готовкой онлайн
+          </h1>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-extrabold text-amber-600 text-sm">Шаг 1. Выберите блюда</div>
+              <p class="text-xs text-slate-600 mt-1">Уберите лук, выберите прожарку стейка и отфильтруйте аллергены.</p>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-extrabold text-amber-600 text-sm">Шаг 2. Предоплата 50%</div>
+              <p class="text-xs text-slate-600 mt-1">Выберите стол на схеме. Предоплата 50% от блюд полностью идёт в счёт ужина!</p>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-extrabold text-amber-600 text-sm">Шаг 3. Живое табло</div>
+              <p class="text-xs text-slate-600 mt-1">Следите за каждым блюдом как в Додо Пицце, делите счёт и оценивайте повара.</p>
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-5">
+          <img
+            src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80"
+            alt="Зал ресторана"
+            class="w-full h-56 sm:h-64 object-cover rounded-2xl shadow-sm"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- ШАГ 1: МЕНЮ -->
+    <section id="sec-menu" class="space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-extrabold uppercase tracking-wider text-amber-600">Шаг 1 · Выбор блюд</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Меню ресторана</h2>
+        </div>
+
+        <div id="hh-bar" class="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-2xl">
+          <span class="text-xs sm:text-sm font-bold text-amber-900" id="hh-status-text">
+            🕒 Счастливые часы (скидка −15% в часы низкой загрузки)
+          </span>
+          <button
+            type="button"
+            id="toggle-hh-btn"
+            class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition"
+          >
+            Включить −15%
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div id="cat-buttons" class="flex items-center gap-2 overflow-x-auto no-scrollbar"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 pt-3 border-t border-slate-100 items-center">
+          <div class="lg:col-span-8 flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 mr-1">Исключить аллергены:</span>
+            <div id="allergen-buttons" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="lg:col-span-4">
+            <input
+              type="search"
+              id="search-input"
+              placeholder="Поиск блюда: рибай, паста, буррата..."
+              class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-amber-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div id="dishes-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </section>
+
+    <!-- ШАГ 2: БРОНИРОВАНИЕ С ПРЕДОПЛАТОЙ 50% -->
+    <section id="sec-booking" class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <span class="text-xs font-extrabold uppercase tracking-wider text-amber-600">Шаг 2 · Выбор стола и Предоплата 50%</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Бронирование стола на схеме зала</h2>
+          <p class="text-sm text-slate-600 mt-1">
+            Выберите стол на карте. Если вы набрали блюда в заказ — предоплата составит <b>ровно 50% от стоимости блюд</b> и полностью зачтётся в ваш чек!
+          </p>
+        </div>
+        <div class="px-4 py-2 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+          ✓ Отмена за ≥24 часа — 100% возврат денег<br/>
+          ⚠️ Отмена менее чем за 24 часа — депозит удерживается
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="lg:col-span-7 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-800">1. Нажмите на свободный стол (зелёный):</span>
+            <div class="flex items-center gap-3 text-xs font-semibold">
+              <span class="inline-flex items-center gap-1"><i class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></i> Свободен</span>
+              <span class="inline-flex items-center gap-1"><i class="w-3 h-3 rounded-full bg-amber-500 inline-block"></i> Выбран</span>
+              <span class="inline-flex items-center gap-1"><i class="w-3 h-3 rounded-full bg-slate-300 inline-block"></i> Занят / Бронь</span>
+            </div>
+          </div>
+
+          <div id="tables-visual-map" class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200"></div>
+
+          <div class="pt-4 space-y-3">
+            <h3 class="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+              Ваши бронирования (проверка возврата депозита ≥24ч и удержания &lt;24ч):
+            </h3>
+            <div id="my-reservations-box" class="space-y-2.5"></div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5">
+          <form id="reservation-form" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+            <div class="text-sm font-bold text-slate-900">2. Данные бронирования и расчёт предоплаты:</div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Ваше имя *</label>
+                <input type="text" id="res-name" required value="Алия Сатпаева" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Телефон *</label>
+                <input type="tel" id="res-phone" required value="+7 701 555 01 01" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Дата *</label>
+                <input type="date" id="res-date" required class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Время *</label>
+                <select id="res-time" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm">
+                  <option value="14:00">14:00</option>
+                  <option value="18:00">18:00</option>
+                  <option value="19:30" selected>19:30</option>
+                  <option value="20:30">20:30</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Гостей *</label>
+                <select id="res-guests" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm">
+                  <option value="2" selected>2 гостя</option>
+                  <option value="4">4 гостя</option>
+                  <option value="6">6 гостей</option>
+                  <option value="8">8 гостей</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Пожелания к столу (повод, аллергии):</label>
+              <input type="text" id="res-comment" placeholder="Например: стол у окна, подать горячее сразу к приходу" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm" />
+            </div>
+
+            <div id="prepay-calc-box" class="p-4 rounded-2xl bg-white border-2 border-amber-400 space-y-2"></div>
+
+            <button
+              type="submit"
+              class="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow transition"
+            >
+              💳 Оплатить предоплату 50% и забронировать стол
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ШАГ 3: ЖИВОЙ ТАБЛО-ТРЕКЕР И QR-СЧЁТ -->
+    <section id="sec-tracker" class="space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-extrabold uppercase tracking-wider text-amber-600">Шаг 3 · Живой контроль кухни и QR-счёт</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Табло готовности ваших блюд и Счёт за столом</h2>
+        </div>
+
+        <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-200">
+          <span class="text-xs font-bold text-slate-500">Ваш QR-стол в зале:</span>
+          <select id="active-qr-table" class="text-sm font-bold text-slate-900 bg-transparent focus:outline-none"></select>
+        </div>
+      </div>
+
+      <div id="tracker-and-bill-box"></div>
+    </section>
+
+  </main>
+
+  <!-- КОРЗИНА -->
+  <div id="cart-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-end">
+    <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900">Ваш выбранный заказ</h3>
+          <p class="text-xs text-slate-500">Для предзаказа к брони (50%) или подачи за QR-стол</p>
+        </div>
+        <button type="button" data-close="cart-modal" class="w-9 h-9 rounded-xl bg-slate-100 font-bold">✕</button>
+      </div>
+      <div id="cart-items-box" class="flex-1 overflow-y-auto p-5 space-y-4"></div>
+      <div id="cart-footer-box" class="p-5 border-t border-slate-200 bg-slate-50 space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: НАСТРОЙКА БЛЮДА -->
+  <div id="dish-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+      <button type="button" data-close="dish-modal" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 font-bold">✕</button>
+      <div id="dish-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ОЦЕНКА БЛЮДА -->
+  <div id="review-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+      <button type="button" data-close="review-modal" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 font-bold">✕</button>
+      <h3 class="text-xl font-extrabold text-slate-900">Оценить блюдо</h3>
+      <p id="rev-dish-name" class="text-sm font-bold text-amber-600"></p>
+      <form id="review-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Оценка повару (от 1 до 5 звёзд):</label>
+          <div id="star-picker" class="flex gap-2 text-3xl text-amber-400 cursor-pointer">
+            <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Быстрые теги:</label>
+          <div id="rev-tags-box" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <textarea id="rev-comment" rows="2" placeholder="Ваш комментарий о вкусе и подаче..." class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm"></textarea>
+        <button type="submit" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm">
+          Отправить оценку повару
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ПРОБЛЕМА С БЛЮДОМ / ВОЗВРАТ -->
+  <div id="complaint-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+      <button type="button" data-close="complaint-modal" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 font-bold">✕</button>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold">
+        🚨 Контроль качества и мгновенный возврат
+      </div>
+      <h3 class="text-xl font-extrabold text-slate-900">Проблема с блюдом / Возврат</h3>
+      <p id="cmp-dish-name" class="text-sm font-bold text-slate-700"></p>
+      <form id="complaint-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Причина обращения *</label>
+          <select id="cmp-reason" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Прикрепить фото блюда *</label>
+          <input type="file" id="cmp-photo" accept="image/*" class="w-full text-xs text-slate-600" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Что сделать? *</label>
+          <select id="cmp-preferred" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            <option value="refund">Вернуть 100% стоимости блюда и вызвать менеджера</option>
+            <option value="bonus">Начислить компенсацию бонусами (+20%)</option>
+          </select>
+        </div>
+        <textarea id="cmp-desc" rows="2" placeholder="Опишите проблему (например: блюдо холодное, не учли комментарий)..." class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm"></textarea>
+        <button type="submit" class="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm">
+          🚨 Отправить жалобу и вызвать менеджера к столу
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ЛИЧНЫЙ КАБИНЕТ ГОСТЯ -->
+  <div id="guest-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+      <button type="button" data-close="guest-modal" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 font-bold">✕</button>
+      <h3 class="text-xl font-extrabold text-slate-900">Личный кабинет и Бонусы Гостя</h3>
+      <div id="guest-cabinet-info" class="p-4 rounded-2xl bg-amber-50 border border-amber-200"></div>
+      <form id="guest-login-form" class="space-y-3 pt-2 border-t border-slate-100">
+        <div class="text-xs font-bold text-slate-500 uppercase">Войти / Сменить гостя по номеру телефона (SMS/WhatsApp):</div>
+        <input type="text" id="login-guest-name" required placeholder="Ваше имя" value="Алия Сатпаева" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+        <input type="tel" id="login-guest-phone" required placeholder="+7 701 ..." value="+7 701 555 01 01" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+        <button type="submit" class="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-sm">
+          Войти по SMS-коду (+2 000 ₸ новым гостям)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: НАСТРОЙКА SUPABASE (С УЖЕ ВСТАВЛЕННЫМ КЛЮЧОМ sb_publishable_...) -->
+  <div id="sb-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 relative">
+      <button type="button" data-close="sb-modal" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 font-bold">✕</button>
+      <div class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+        ✓ Ваш ключ sb_publishable_Q8bp5yDcT3g-b0K7tnvbfw_RYFYDkMi уже встроен!
+      </div>
+      <h3 class="text-xl font-extrabold text-slate-900">Укажите Project URL вашей общей базы Supabase</h3>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Вставьте <code>Project URL</code> вашего проекта Supabase (из раздела <b>Project Settings → API → Project URL</b>), чтобы объединить этот сайт и второй репозиторий (<code>site-2-staff-erp</code>) через единую облачную базу данных.
+      </p>
+      <form id="sb-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">1. Project URL (SUPABASE_URL) *</label>
+          <input type="text" id="sb-url" placeholder="https://ваш-id-проекта.supabase.co" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">2. Publishable Key (уже вставлен) *</label>
+          <input type="text" id="sb-key" value="sb_publishable_Q8bp5yDcT3g-b0K7tnvbfw_RYFYDkMi" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono" />
+        </div>
+        <button type="submit" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm">
+          Подключить общую облачную базу Supabase
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-box" class="fixed bottom-5 right-5 z-50 space-y-2 max-w-sm w-full pointer-events-none"></div>
+
+  <footer class="bg-white border-t border-slate-200 py-8 px-4 mt-12 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div><b>L'AURUM</b> — Сайт №1: Для Гостей (Готов к загрузке в 1-й репозиторий GitHub)</div>
+      <a href="../site-2-staff-erp/index.html" class="font-bold text-amber-600 hover:underline">
+        Открыть Сайт №2: Корпоративная ERP-система персонала (site-2-staff-erp) →
+      </a>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const db = window.LaurumDB;
+      const { ALLERGENS, DONENESS, REVIEW_TAGS, COMPLAINT_REASONS, fmt } = window.LAURUM_CONST;
+
+      const ui = {
+        cat: "all",
+        search: "",
+        excludedAllergens: new Set(),
+        cart: JSON.parse(localStorage.getItem("laurum_simple_cart") || "[]"),
+        selectedTable: "T1",
+        qrTable: "T3",
+        activeItemForReview: null,
+        activeItemForComplaint: null,
+        selectedStars: 5,
+        photoDataUrl: ""
+      };
+
+      function showToast(text, isError) {
+        const box = document.getElementById("toast-box");
+        const el = document.createElement("div");
+        el.className = `pointer-events-auto p-4 rounded-2xl shadow-lg font-bold text-xs text-white ${
+          isError ? "bg-rose-600" : "bg-slate-900"
+        }`;
+        el.textContent = text;
+        box.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+      }
+
+      function saveCart() {
+        localStorage.setItem("laurum_simple_cart", JSON.stringify(ui.cart));
+        renderAll();
+      }
+
+      function renderHeaderAndCart() {
+        const guest = db.getActiveGuest();
+        document.getElementById("guest-name-header").textContent = guest.full_name.split(" ")[0];
+        document.getElementById("guest-bonus-header").textContent = fmt(guest.bonus_balance);
+        document.getElementById("sb-status-pill").textContent =
+          db.mode === "supabase"
+            ? "● Подключено к общей облачной БД Supabase (Live)"
+            : "● Ключ sb_publishable_... готов (укажите Project URL для облака)";
+
+        const count = ui.cart.reduce((s, i) => s + i.qty, 0);
+        document.getElementById("cart-count-badge").textContent = count;
+
+        const box = document.getElementById("cart-items-box");
+        const foot = document.getElementById("cart-footer-box");
+        if (ui.cart.length === 0) {
+          box.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">Вы пока не добавили блюда. Нажмите «+ В заказ» на любой карточке меню.</div>`;
+          foot.innerHTML = "";
+          return;
+        }
+
+        const inCart = new Set(ui.cart.map((i) => i.dish_id));
+        const upsellList = [];
+        ui.cart.forEach((i) => {
+          const d = db.state.dishes.find((x) => x.id === i.dish_id);
+          (d?.upsell || []).forEach((uId) => {
+            if (!inCart.has(uId) && !upsellList.some((x) => x.id === uId)) {
+              const uDish = db.state.dishes.find((x) => x.id === uId && x.in_stock);
+              if (uDish) upsellList.push(uDish);
+            }
+          });
+        });
+
+        box.innerHTML = `
+          <div class="space-y-3">
+            ${ui.cart
+              .map(
+                (it, idx) => `
+              <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                <div>
+                  <div class="font-bold text-sm text-slate-900">${it.title}</div>
+                  ${it.mods ? `<div class="text-xs text-amber-700 font-medium">${it.mods}</div>` : ""}
+                  <div class="text-xs text-slate-500 mt-0.5">${fmt(it.price)} × ${it.qty} = <b>${fmt(it.price * it.qty)}</b></div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button type="button" data-cdec="${idx}" class="w-7 h-7 rounded-lg bg-white border border-slate-200 font-bold">−</button>
+                  <span class="text-xs font-bold w-5 text-center">${it.qty}</span>
+                  <button type="button" data-cinc="${idx}" class="w-7 h-7 rounded-lg bg-white border border-slate-200 font-bold">+</button>
+                </div>
+              </div>`
+              )
+              .join("")}
+          </div>
+
+          ${
+            upsellList.length > 0
+              ? `<div class="pt-4 border-t border-slate-100 space-y-2">
+                  <div class="text-xs font-extrabold text-amber-700 uppercase">🍷 Идеально подойдёт к вашему заказу (Upsell):</div>
+                  ${upsellList
+                    .map(
+                      (u) => `
+                    <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
+                      <div><b>${u.title}</b> · ${fmt(db.getDishPrice(u).price)}</div>
+                      <button type="button" data-upsell="${u.id}" class="px-2.5 py-1 rounded-lg bg-amber-500 text-white font-bold">+ Добавить</button>
+                    </div>`
+                    )
+                    .join("")}
+                </div>`
+              : ""
+          }
+        `;
+
+        const total = ui.cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const prepay50 = Math.round(total * 0.5);
+        foot.innerHTML = `
+          <div class="flex justify-between text-sm"><span>Сумма блюд:</span><b>${fmt(total)}</b></div>
+          <div class="flex justify-between text-sm text-amber-700 font-bold"><span>Предоплата 50% для брони:</span><span>${fmt(prepay50)}</span></div>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <a href="#sec-booking" id="go-to-booking-btn" class="py-3 rounded-xl bg-amber-500 text-white font-bold text-xs text-center">
+              В бронь стола (50%)
+            </a>
+            <button type="button" id="send-to-qr-btn" class="py-3 rounded-xl bg-slate-900 text-white font-bold text-xs">
+              Подать за Стол ${ui.qrTable}
+            </button>
+          </div>
+        `;
+
+        document.getElementById("go-to-booking-btn")?.addEventListener("click", () => {
+          document.getElementById("cart-modal").classList.add("hidden");
+        });
+        document.getElementById("send-to-qr-btn")?.addEventListener("click", () => {
+          db.sendOrderToTable({ table_id: ui.qrTable, items: ui.cart });
+          ui.cart = [];
+          saveCart();
+          document.getElementById("cart-modal").classList.add("hidden");
+          showToast(`Заказ отправлен повару на экран KDS (Стол ${ui.qrTable})!`);
+          document.getElementById("sec-tracker").scrollIntoView({ behavior: "smooth" });
+        });
+      }
+
+      function renderMenu() {
+        const hhOn = db.state.happy_hour_enabled;
+        document.getElementById("hh-status-text").textContent = hhOn
+          ? "🔥 Счастливые часы АКТИВНЫ: скидка −15% применена ко всем блюдам!"
+          : "🕒 Счастливые часы (динамическая скидка −15% в часы низкой загрузки)";
+        document.getElementById("toggle-hh-btn").textContent = hhOn ? "Выключить −15%" : "Включить −15%";
+
+        const cats = [{ id: "all", name: "Все блюда" }, ...db.state.categories];
+        document.getElementById("cat-buttons").innerHTML = cats
+          .map(
+            (c) => `
+          <button type="button" data-cat="${c.id}" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition ${
+              ui.cat === c.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }">
+            ${c.name}
+          </button>`
+          )
+          .join("");
+
+        document.getElementById("allergen-buttons").innerHTML = Object.entries(ALLERGENS)
+          .map(([k, label]) => {
+            const on = ui.excludedAllergens.has(k);
+            return `
+              <button type="button" data-alg="${k}" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+              on
+                ? "bg-rose-600 text-white border-rose-600"
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400"
+            }">
+                ${on ? "✕ " : ""}Без: ${label.toLowerCase()}
+              </button>`;
+          })
+          .join("");
+
+        let list = db.state.dishes.filter((d) => {
+          if (ui.cat !== "all" && d.category_id !== ui.cat) return false;
+          if (ui.search && !d.title.toLowerCase().includes(ui.search.toLowerCase()) && !d.description.toLowerCase().includes(ui.search.toLowerCase())) return false;
+          if ((d.allergens || []).some((a) => ui.excludedAllergens.has(a))) return false;
+          return true;
+        });
+
+        document.getElementById("dishes-grid").innerHTML = list
+          .map((d) => {
+            const p = db.getDishPrice(d);
+            const revs = db.state.reviews.filter((r) => r.dish_id === d.id);
+            const rating = revs.length ? (revs.reduce((s, r) => s + r.rating, 0) / revs.length).toFixed(1) : "5.0";
+            const algs = (d.allergens || []).map((a) => ALLERGENS[a]).join(", ");
+
+            return `
+              <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between ${
+                d.in_stock ? "" : "opacity-60"
+              }">
+                <div>
+                  <div class="relative h-48 bg-slate-100">
+                    <img src="${d.image}" alt="${d.title}" class="w-full h-full object-cover" />
+                    <div class="absolute top-3 left-3 flex gap-1.5">
+                      <span class="px-2.5 py-1 rounded-full bg-white/95 text-slate-900 text-xs font-bold shadow-sm">
+                        ★ ${rating}
+                      </span>
+                      ${
+                        p.discountPct
+                          ? `<span class="px-2.5 py-1 rounded-full bg-amber-500 text-white text-xs font-bold shadow-sm">−${p.discountPct}%</span>`
+                          : ""
+                      }
+                    </div>
+                    ${
+                      !d.in_stock
+                        ? `<div class="absolute inset-0 bg-slate-900/60 flex items-center justify-center"><span class="px-4 py-1.5 rounded-full bg-rose-600 text-white font-bold text-xs">В СТОП-ЛИСТЕ</span></div>`
+                        : ""
+                    }
+                  </div>
+                  <div class="p-5 space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                      <span>${d.weight} · ⏱ ${d.cook_time} мин</span>
+                      <span>${d.kcal} ккал (Б:${d.protein} Ж:${d.fat} У:${d.carbs})</span>
+                    </div>
+                    <h3 class="font-extrabold text-lg text-slate-900 leading-snug">${d.title}</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">${d.description}</p>
+                    <div class="text-[11px] text-slate-400">
+                      ${algs ? `Аллергены: ${algs}` : "✓ Без основных аллергенов"}
+                    </div>
+                  </div>
+                </div>
+                <div class="p-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span class="font-extrabold text-xl text-slate-900">${fmt(p.price)}</span>
+                    ${p.oldPrice ? `<span class="text-xs text-slate-400 line-through ml-1">${fmt(p.oldPrice)}</span>` : ""}
+                  </div>
+                  <button
+                    type="button"
+                    ${d.in_stock ? `data-open-dish="${d.id}"` : "disabled"}
+                    class="px-4 py-2.5 rounded-xl font-bold text-xs transition ${
+                      d.in_stock
+                        ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                        : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                    }"
+                  >
+                    ${d.in_stock ? "Настроить / + В заказ" : "Недоступно"}
+                  </button>
+                </div>
+              </div>`;
+          })
+          .join("");
+      }
+
+      function openDishModal(dishId) {
+        const d = db.state.dishes.find((x) => x.id === dishId);
+        if (!d) return;
+        const p = db.getDishPrice(d);
+        const modal = document.getElementById("dish-modal");
+        const box = document.getElementById("dish-modal-content");
+
+        box.innerHTML = `
+          <div class="space-y-4">
+            <img src="${d.image}" alt="${d.title}" class="w-full h-48 object-cover rounded-2xl" />
+            <div>
+              <span class="text-xs font-bold text-amber-600">${d.weight} · Норматив подачи ${d.cook_time} мин</span>
+              <h3 class="text-2xl font-extrabold text-slate-900">${d.title}</h3>
+              <p class="text-xs text-slate-600 mt-1"><b>Состав:</b> ${d.composition}</p>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 text-center bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
+              <div><b class="block text-sm">${d.kcal}</b>ккал</div>
+              <div><b class="block text-sm">${d.protein} г</b>Белки</div>
+              <div><b class="block text-sm">${d.fat} г</b>Жиры</div>
+              <div><b class="block text-sm">${d.carbs} г</b>Углеводы</div>
+            </div>
+
+            ${
+              d.has_doneness
+                ? `<div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Выберите степень прожарки стейка:</label>
+                    <select id="mod-doneness" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold">
+                      ${DONENESS.map((dn, i) => `<option value="${dn}" ${i === 1 ? "selected" : ""}>${dn}</option>`).join("")}
+                    </select>
+                  </div>`
+                : ""
+            }
+
+            ${
+              d.removable && d.removable.length
+                ? `<div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Убрать ингредиенты из блюда (по желанию):</label>
+                    <div class="flex flex-wrap gap-2">
+                      ${d.removable
+                        .map(
+                          (rem) => `
+                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold cursor-pointer">
+                          <input type="checkbox" name="mod-rem" value="${rem}" />
+                          <span>Без: ${rem}</span>
+                        </label>`
+                        )
+                        .join("")}
+                    </div>
+                  </div>`
+                : ""
+            }
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Пожелание повару:</label>
+              <input type="text" id="mod-comment" placeholder="Например: соус подать отдельно..." class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+            </div>
+
+            <button type="button" id="confirm-dish-btn" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow">
+              + Добавить в заказ за ${fmt(p.price)}
+            </button>
+          </div>
+        `;
+
+        document.getElementById("confirm-dish-btn").addEventListener("click", () => {
+          const dn = document.getElementById("mod-doneness")?.value || "";
+          const rems = [...box.querySelectorAll('input[name="mod-rem"]:checked')].map((i) => "без " + i.value);
+          const comm = document.getElementById("mod-comment")?.value.trim() || "";
+          const mods = [dn ? `Прожарка ${dn}` : "", ...rems, comm].filter(Boolean).join(" · ");
+
+          ui.cart.push({
+            dish_id: d.id,
+            title: d.title,
+            price: p.price,
+            qty: 1,
+            mods
+          });
+          saveCart();
+          modal.classList.add("hidden");
+          showToast(`«${d.title}» добавлено в ваш заказ!`);
+        });
+
+        modal.classList.remove("hidden");
+      }
+
+      function renderBookingSection() {
+        const mapBox = document.getElementById("tables-visual-map");
+        mapBox.innerHTML = db.state.tables
+          .map((t) => {
+            const st = db.getTableLiveStatus(t.id);
+            const zone = db.state.zones.find((z) => z.id === t.zone_id);
+            const isSel = ui.selectedTable === t.id;
+            const isFree = st.status === "free";
+
+            return `
+              <button
+                type="button"
+                data-pick-table="${t.id}"
+                class="p-3.5 rounded-2xl border-2 text-left transition flex flex-col justify-between ${
+                  isSel
+                    ? "bg-amber-500 text-white border-amber-600 shadow-md"
+                    : isFree
+                    ? "bg-white hover:border-emerald-500 border-emerald-200 text-slate-900"
+                    : "bg-slate-100 border-slate-200 text-slate-400"
+                }"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="font-extrabold text-sm">${t.label}</span>
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    isSel ? "bg-white text-amber-700" : isFree ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
+                  }">
+                    ${isSel ? "Выбран" : st.label}
+                  </span>
+                </div>
+                <div class="text-xs mt-2 ${isSel ? "text-amber-50" : "text-slate-500"}">
+                  ${zone ? zone.name : ""} · до ${t.seats} мест
+                </div>
+              </button>`;
+          })
+          .join("");
+
+        const guestsCount = Number(document.getElementById("res-guests")?.value || 2);
+        const calc = db.calculatePrepayment({
+          tableId: ui.selectedTable,
+          guestsCount,
+          cartItems: ui.cart
+        });
+
+        document.getElementById("prepay-calc-box").innerHTML = `
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Выбранный стол:</span>
+            <b class="text-slate-900">${calc.table.label} (${calc.zone.name})</b>
+          </div>
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Сумма предзаказанных блюд (${ui.cart.reduce((s, i) => s + i.qty, 0)} шт.):</span>
+            <b class="text-slate-900">${fmt(calc.foodTotal)}</b>
+          </div>
+          <div class="flex justify-between text-xs text-amber-700 font-bold">
+            <span>Формула предоплаты:</span>
+            <span class="text-right">${calc.explanation}</span>
+          </div>
+          <div class="pt-2 border-t border-slate-200 flex justify-between items-center">
+            <span class="text-sm font-extrabold text-slate-900">Предоплата сейчас (100% идёт в счёт):</span>
+            <span class="text-xl font-extrabold text-amber-600">${fmt(calc.depositAmount)}</span>
+          </div>
+        `;
+
+        const resBox = document.getElementById("my-reservations-box");
+        resBox.innerHTML = db.state.reservations
+          .slice(0, 4)
+          .map((r) => {
+            return `
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="font-extrabold text-sm text-slate-900">
+                    Бронь ${r.code} · Стол ${r.table_id} (${r.visit_date} в ${r.visit_time}, ${r.guests_count} гост.)
+                  </div>
+                  <div class="text-xs text-slate-600 mt-0.5">
+                    Гость: ${r.guest_name} · Внесена предоплата: <b>${fmt(r.deposit_amount)}</b> (${r.deposit_rule})
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  ${
+                    r.status === "confirmed"
+                      ? `<button type="button" data-cancel-res="${r.id}" data-late="0" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">
+                          Отменить за ≥24ч (Вернуть 100%)
+                        </button>
+                        <button type="button" data-cancel-res="${r.id}" data-late="1" class="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold">
+                          Отменить &lt;24ч (Удержать депозит)
+                        </button>`
+                      : r.deposit_status === "refunded"
+                      ? `<span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">✓ Возврат 100% (${fmt(r.refund_amount)})</span>`
+                      : r.deposit_status === "forfeited"
+                      ? `<span class="px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold">✕ Поздняя отмена (&lt;24ч): Депозит удержан</span>`
+                      : `<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">✓ Гости за столом (Депозит в счёте)</span>`
+                  }
+                </div>
+              </div>`;
+          })
+          .join("");
+      }
+
+      function renderTrackerAndBill() {
+        const sel = document.getElementById("active-qr-table");
+        sel.innerHTML = db.state.tables
+          .map((t) => `<option value="${t.id}" ${t.id === ui.qrTable ? "selected" : ""}>${t.label}</option>`)
+          .join("");
+
+        const box = document.getElementById("tracker-and-bill-box");
+        const order = db.state.orders.find((o) => o.table_id === ui.qrTable) || db.state.orders[0];
+        if (!order) {
+          box.innerHTML = `<div class="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-500">За этим столом пока нет активного заказа.</div>`;
+          return;
+        }
+
+        const items = db.state.order_items.filter((i) => i.order_id === order.id);
+        const remaining = Math.max(0, order.total - order.paid_amount);
+        const guest = db.getActiveGuest();
+        const maxBonus = Math.min(guest.bonus_balance, Math.round(remaining * 0.3));
+
+        const stageMap = {
+          accepted: { step: 1, label: "1. Принят на кухне", color: "bg-slate-200 text-slate-800" },
+          cooking: { step: 2, label: "2. Готовится поваром", color: "bg-amber-500 text-white animate-pulse" },
+          ready: { step: 3, label: "3. Готово на раздаче", color: "bg-emerald-500 text-white" },
+          served: { step: 4, label: "4. Подано на ваш стол", color: "bg-slate-900 text-white" }
+        };
+
+        box.innerHTML = `
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <span class="text-xs font-bold text-amber-600 uppercase">Живой трекер кухни (синхронизировано с KDS Повара)</span>
+                  <h3 class="text-xl font-extrabold text-slate-900">${order.code} · Стол ${order.table_id} (${order.guest_name})</h3>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-bold ${
+                  order.status === "paid" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                }">
+                  ${order.status === "paid" ? "✓ Счёт оплачен" : "Открытый счёт"}
+                </span>
+              </div>
+
+              <div class="space-y-4">
+                ${items
+                  .map((it) => {
+                    const st = stageMap[it.status] || stageMap.accepted;
+                    const cook = db.state.profiles.find((p) => p.id === it.cook_id);
+                    const rev = db.state.reviews.find((r) => r.order_item_id === it.id);
+                    const cmp = db.state.complaints.find((c) => c.order_item_id === it.id);
+
+                    return `
+                      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <div class="font-extrabold text-base text-slate-900">
+                              ${it.title} × ${it.qty}
+                              ${it.refunded ? `<span class="ml-2 px-2 py-0.5 rounded bg-rose-100 text-rose-700 text-xs">Возврат оформлен</span>` : ""}
+                            </div>
+                            ${it.mods ? `<div class="text-xs font-bold text-amber-700">${it.mods}</div>` : ""}
+                            <div class="text-xs text-slate-500">Готовит: ${cook ? cook.full_name : "Шеф-повар"} · Норматив: ${it.norm_min} мин</div>
+                          </div>
+                          <div class="text-right">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold ${st.color}">${st.label}</span>
+                            <div class="font-extrabold text-sm mt-1">${fmt(it.price * it.qty)}</div>
+                          </div>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-1.5">
+                          <div class="h-2 rounded-full ${st.step >= 1 ? "bg-amber-500" : "bg-slate-200"}"></div>
+                          <div class="h-2 rounded-full ${st.step >= 2 ? "bg-amber-500" : "bg-slate-200"}"></div>
+                          <div class="h-2 rounded-full ${st.step >= 3 ? "bg-emerald-500" : "bg-slate-200"}"></div>
+                          <div class="h-2 rounded-full ${st.step >= 4 ? "bg-slate-900" : "bg-slate-200"}"></div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2 pt-1">
+                          ${
+                            rev
+                              ? `<span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold">★ Ваша оценка блюда: ${rev.rating}/5</span>`
+                              : `<button type="button" data-rate-item="${it.id}" class="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-slate-900 text-xs font-bold">
+                                  ⭐ Оценить это блюдо (1–5)
+                                </button>`
+                          }
+                          ${
+                            cmp
+                              ? `<span class="px-3 py-1 rounded-xl bg-rose-100 text-rose-800 text-xs font-bold">🚨 Претензия ${cmp.code}: ${cmp.status === "open" ? "Менеджер уже идёт к столу" : cmp.resolution_note}</span>`
+                              : `<button type="button" data-complain-item="${it.id}" class="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-bold transition">
+                                  ⚠️ Проблема с блюдом / Оформить возврат
+                                </button>`
+                          }
+                        </div>
+                      </div>`;
+                  })
+                  .join("")}
+              </div>
+            </div>
+
+            <div class="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+              <div>
+                <span class="text-xs font-bold text-amber-600 uppercase">Управление столом по QR-коду</span>
+                <h3 class="text-xl font-extrabold text-slate-900">Электронный счёт и Вызов официанта</h3>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2.5">
+                <button type="button" id="btn-call-waiter" class="py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 font-bold text-xs text-slate-800">
+                  🔔 Вызвать официанта
+                </button>
+                <button type="button" id="btn-call-bill" class="py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 font-bold text-xs text-slate-800">
+                  🧾 Попросить терминал
+                </button>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-sm">
+                <div class="flex justify-between"><span>Сумма блюд по чеку:</span><b>${fmt(order.subtotal)}</b></div>
+                <div class="flex justify-between text-emerald-700 font-bold"><span>Зачтённая предоплата 50% (депозит):</span><span>−${fmt(order.deposit_applied)}</span></div>
+                <div class="flex justify-between text-amber-700 font-bold"><span>Оплачено бонусами:</span><span>−${fmt(order.bonus_used)}</span></div>
+                <div class="flex justify-between text-slate-500"><span>Уже внесено гостями:</span><span>${fmt(order.paid_amount)}</span></div>
+                <div class="pt-2 border-t border-slate-200 flex justify-between text-lg font-extrabold text-slate-900">
+                  <span>Осталось оплатить:</span>
+                  <span>${fmt(remaining)}</span>
+                </div>
+              </div>
+
+              ${
+                remaining > 0
+                  ? `<div class="space-y-3">
+                      <div class="text-xs font-bold text-slate-600">Разделить счёт между гостями за столом:</div>
+                      <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-split="1" class="py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">Весь (${fmt(remaining)})</button>
+                        <button type="button" data-split="2" class="py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold">На двоих (${fmt(Math.ceil(remaining / 2))})</button>
+                        <button type="button" data-split="4" class="py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold">На 4-х (${fmt(Math.ceil(remaining / 4))})</button>
+                      </div>
+
+                      ${
+                        maxBonus > 0
+                          ? `<label class="flex items-center gap-2 text-xs font-bold text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200 cursor-pointer">
+                              <input type="checkbox" id="use-bonus-chk" checked />
+                              <span>Списать ${fmt(maxBonus)} моих бонусов (доступно ${fmt(guest.bonus_balance)})</span>
+                            </label>`
+                          : ""
+                      }
+
+                      <button
+                        type="button"
+                        id="pay-bill-btn"
+                        data-ord="${order.id}"
+                        data-amt="${remaining}"
+                        class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow transition"
+                      >
+                        💳 Оплатить счёт онлайн (+5% кэшбэк бонусами)
+                      </button>
+                    </div>`
+                  : `<div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                      ✓ Счёт полностью оплачен! Вам начислено 5% кэшбэка бонусами.
+                    </div>`
+              }
+            </div>
+          </div>
+        `;
+
+        document.getElementById("btn-call-waiter")?.addEventListener("click", () => {
+          db.callStaffFromTable(order.table_id, "waiter");
+          showToast(`Официант получил сигнал вызова к Столу ${order.table_id}!`);
+        });
+        document.getElementById("btn-call-bill")?.addEventListener("click", () => {
+          db.callStaffFromTable(order.table_id, "bill");
+          showToast(`Запрос терминала отправлен официанту (Стол ${order.table_id})!`);
+        });
+
+        box.querySelectorAll("[data-split]").forEach((b) => {
+          b.addEventListener("click", () => {
+            const parts = Number(b.dataset.split);
+            const partAmt = Math.ceil(remaining / parts);
+            const payBtn = document.getElementById("pay-bill-btn");
+            if (payBtn) {
+              payBtn.dataset.amt = partAmt;
+              payBtn.textContent = `💳 Оплатить свою долю (1/${parts}) — ${fmt(partAmt)}`;
+            }
+          });
+        });
+
+        document.getElementById("pay-bill-btn")?.addEventListener("click", (e) => {
+          const ordId = e.currentTarget.dataset.ord;
+          const amt = Number(e.currentTarget.dataset.amt);
+          const bonus = document.getElementById("use-bonus-chk")?.checked ? maxBonus : 0;
+          db.payOrder({ orderId: ordId, payAmount: amt, useBonus: bonus });
+          showToast(`Оплата принята! Начислен 5% кэшбэк бонусами.`);
+          renderAll();
+        });
+      }
+
+      function renderAll() {
+        renderHeaderAndCart();
+        renderMenu();
+        renderBookingSection();
+        renderTrackerAndBill();
+      }
+
+      const dateIn = document.getElementById("res-date");
+      if (dateIn) dateIn.value = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
+      document.getElementById("toggle-hh-btn").addEventListener("click", () => {
+        const on = db.toggleHappyHour();
+        showToast(on ? "Счастливые часы включены: скидка −15% на всё меню!" : "Обычные цены меню восстановлены");
+        renderAll();
+      });
+
+      document.getElementById("search-input").addEventListener("input", (e) => {
+        ui.search = e.target.value;
+        renderMenu();
+      });
+
+      document.getElementById("res-guests").addEventListener("change", renderBookingSection);
+      document.getElementById("active-qr-table").addEventListener("change", (e) => {
+        ui.qrTable = e.target.value;
+        renderAll();
+      });
+
+      document.getElementById("open-cart-btn").addEventListener("click", () => {
+        document.getElementById("cart-modal").classList.remove("hidden");
+      });
+
+      document.getElementById("guest-profile-btn").addEventListener("click", () => {
+        const g = db.getActiveGuest();
+        const logs = db.state.loyalty_log.filter((l) => l.guest_id === g.id);
+        document.getElementById("guest-cabinet-info").innerHTML = `
+          <div class="font-extrabold text-base text-slate-900">${g.full_name} (${g.phone})</div>
+          <div class="text-sm text-amber-800 mt-1">Бонусный баланс: <b class="text-lg">${fmt(g.bonus_balance)}</b> (Кэшбэк 5%)</div>
+          <div class="mt-3 space-y-1 text-xs text-slate-600">
+            ${logs.slice(0, 4).map((l) => `<div class="flex justify-between"><span>${l.reason}</span><b>${l.amount > 0 ? "+" : ""}${fmt(l.amount)}</b></div>`).join("")}
+          </div>
+        `;
+        document.getElementById("guest-modal").classList.remove("hidden");
+      });
+
+      document.getElementById("guest-login-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const { guest, isNew } = db.loginGuest({
+          full_name: document.getElementById("login-guest-name").value,
+          phone: document.getElementById("login-guest-phone").value
+        });
+        document.getElementById("guest-modal").classList.add("hidden");
+        showToast(isNew ? `Добро пожаловать, ${guest.full_name}! Начислено 2 000 ₸ бонусов.` : `Вы вошли как ${guest.full_name}`);
+        renderAll();
+      });
+
+      document.getElementById("open-sb-btn").addEventListener("click", () => {
+        const creds = db.getSupabaseCredentials();
+        document.getElementById("sb-url").value = creds.url.includes("TODO") ? "" : creds.url;
+        document.getElementById("sb-key").value = creds.key;
+        document.getElementById("sb-modal").classList.remove("hidden");
+      });
+
+      document.getElementById("sb-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        await db.saveSupabaseCredentials(document.getElementById("sb-url").value, document.getElementById("sb-key").value);
+        document.getElementById("sb-modal").classList.add("hidden");
+        showToast("Облачная база данных Supabase подключена!");
+        renderAll();
+      });
+
+      document.getElementById("reservation-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const res = db.createReservation({
+          guest_name: document.getElementById("res-name").value,
+          guest_phone: document.getElementById("res-phone").value,
+          table_id: ui.selectedTable,
+          visit_date: document.getElementById("res-date").value,
+          visit_time: document.getElementById("res-time").value,
+          guests_count: document.getElementById("res-guests").value,
+          comment: document.getElementById("res-comment").value,
+          cartItems: ui.cart
+        });
+        ui.cart = [];
+        saveCart();
+        showToast(`Бронь ${res.code} создана! Предоплата ${fmt(res.deposit_amount)} оплачена и зачтётся в ваш счёт.`);
+      });
+
+      document.getElementById("review-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const tags = [...document.querySelectorAll('input[name="rtag"]:checked')].map((i) => i.value);
+        db.addDishReview({
+          order_item_id: ui.activeItemForReview,
+          rating: ui.selectedStars,
+          tags,
+          comment: document.getElementById("rev-comment").value
+        });
+        document.getElementById("review-modal").classList.add("hidden");
+        showToast("Спасибо! Ваша оценка отразилась в рейтинге повара на KDS.");
+        renderAll();
+      });
+
+      document.getElementById("cmp-photo").addEventListener("change", (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => (ui.photoDataUrl = r.result);
+        r.readAsDataURL(f);
+      });
+
+      document.getElementById("complaint-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const cmp = db.createComplaint({
+          order_item_id: ui.activeItemForComplaint,
+          reason: document.getElementById("cmp-reason").value,
+          description: document.getElementById("cmp-desc").value,
+          photo_url: ui.photoDataUrl,
+          preferred: document.getElementById("cmp-preferred").value
+        });
+        document.getElementById("complaint-modal").classList.add("hidden");
+        showToast(`Претензия ${cmp.code} отправлена! Во 2-м репозитории (ERP Персонала) включился красный сигнал тревоги.`);
+        renderAll();
+      });
+
+      document.body.addEventListener("click", (e) => {
+        const closeBtn = e.target.closest("[data-close]");
+        if (closeBtn) {
+          document.getElementById(closeBtn.dataset.close).classList.add("hidden");
+          return;
+        }
+        const catBtn = e.target.closest("[data-cat]");
+        if (catBtn) {
+          ui.cat = catBtn.dataset.cat;
+          renderMenu();
+          return;
+        }
+        const algBtn = e.target.closest("[data-alg]");
+        if (algBtn) {
+          const k = algBtn.dataset.alg;
+          if (ui.excludedAllergens.has(k)) ui.excludedAllergens.delete(k);
+          else ui.excludedAllergens.add(k);
+          renderMenu();
+          return;
+        }
+        const openDishBtn = e.target.closest("[data-open-dish]");
+        if (openDishBtn) {
+          openDishModal(openDishBtn.dataset.openDish);
+          return;
+        }
+        const cdec = e.target.closest("[data-cdec]");
+        if (cdec) {
+          const idx = Number(cdec.dataset.cdec);
+          if (ui.cart[idx].qty > 1) ui.cart[idx].qty--;
+          else ui.cart.splice(idx, 1);
+          saveCart();
+          return;
+        }
+        const cinc = e.target.closest("[data-cinc]");
+        if (cinc) {
+          ui.cart[Number(cinc.dataset.cinc)].qty++;
+          saveCart();
+          return;
+        }
+        const upsell = e.target.closest("[data-upsell]");
+        if (upsell) {
+          const d = db.state.dishes.find((x) => x.id === upsell.dataset.upsell);
+          if (d) {
+            ui.cart.push({ dish_id: d.id, title: d.title, price: db.getDishPrice(d).price, qty: 1, mods: "Рекомендация к заказу" });
+            saveCart();
+            showToast(`«${d.title}» добавлено в заказ`);
+          }
+          return;
+        }
+        const pickTbl = e.target.closest("[data-pick-table]");
+        if (pickTbl) {
+          ui.selectedTable = pickTbl.dataset.pickTable;
+          renderBookingSection();
+          return;
+        }
+        const cancelRes = e.target.closest("[data-cancel-res]");
+        if (cancelRes) {
+          const isLate = cancelRes.dataset.late === "1";
+          const resInfo = db.cancelReservation(cancelRes.dataset.cancelRes, isLate);
+          if (resInfo) {
+            showToast(
+              resInfo.isFullRefund
+                ? `Отмена за ≥24ч: предоплата ${fmt(resInfo.res.refund_amount)} возвращена 100% на карту гостя!`
+                : `Отмена <24ч: депозит ${fmt(resInfo.res.deposit_amount)} удержан рестораном (отражено в доходах бухгалтерии)!`,
+              !resInfo.isFullRefund
+            );
+            renderAll();
+          }
+          return;
+        }
+        const rateBtn = e.target.closest("[data-rate-item]");
+        if (rateBtn) {
+          ui.activeItemForReview = rateBtn.dataset.rateItem;
+          const it = db.state.order_items.find((i) => i.id === ui.activeItemForReview);
+          document.getElementById("rev-dish-name").textContent = it ? it.title : "";
+          document.getElementById("rev-tags-box").innerHTML = REVIEW_TAGS.map(
+            (t) => `<label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-semibold cursor-pointer"><input type="checkbox" name="rtag" value="${t}"/><span>${t}</span></label>`
+          ).join("");
+          document.getElementById("review-modal").classList.remove("hidden");
+          return;
+        }
+        const starEl = e.target.closest("[data-star]");
+        if (starEl) {
+          ui.selectedStars = Number(starEl.dataset.star);
+          document.querySelectorAll("[data-star]").forEach((s) => {
+            s.className = Number(s.dataset.star) <= ui.selectedStars ? "text-amber-400" : "text-slate-300";
+          });
+          return;
+        }
+        const cmpBtn = e.target.closest("[data-complain-item]");
+        if (cmpBtn) {
+          ui.activeItemForComplaint = cmpBtn.dataset.complainItem;
+          const it = db.state.order_items.find((i) => i.id === ui.activeItemForComplaint);
+          document.getElementById("cmp-dish-name").textContent = it ? `${it.title} (${fmt(it.price * it.qty)})` : "";
+          document.getElementById("cmp-reason").innerHTML = COMPLAINT_REASONS.map((r) => `<option value="${r}">${r}</option>`).join("");
+          document.getElementById("complaint-modal").classList.remove("hidden");
+        }
+      });
+
+      db.subscribe(renderAll);
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
