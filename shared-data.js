@@ -103,12 +103,13 @@ window.VOSTOK_PROMOS = [
 ];
 
 window.VOSTOK_STATUS_META = {
-  new:        { label: "Принят",          step: 1, color: "bg-blue-100 text-blue-800" },
-  cooking:    { label: "Готовится",       step: 2, color: "bg-amber-100 text-amber-800" },
-  ready:      { label: "Готов к выдаче",  step: 3, color: "bg-emerald-100 text-emerald-800" },
-  delivering: { label: "В пути",          step: 4, color: "bg-indigo-100 text-indigo-800" },
-  completed:  { label: "Выполнен",        step: 5, color: "bg-stone-200 text-stone-800" },
-  cancelled:  { label: "Отменён",         step: 0, color: "bg-rose-100 text-rose-800" }
+  new:        { label: "Принят",            step: 1, color: "bg-blue-100 text-blue-800" },
+  cooking:    { label: "Готовится",         step: 2, color: "bg-amber-100 text-amber-800" },
+  ready:      { label: "Готов к выдаче",    step: 3, color: "bg-emerald-100 text-emerald-800" },
+  delivering: { label: "В пути",            step: 4, color: "bg-indigo-100 text-indigo-800" },
+  completed:  { label: "Выполнен",          step: 5, color: "bg-stone-200 text-stone-800" },
+  cancelled:  { label: "Отменён",           step: 0, color: "bg-rose-100 text-rose-800" },
+  refunded:   { label: "Возврат / Брак",    step: 0, color: "bg-rose-200 text-rose-900" }
 };
 
 window.VOSTOK_ROLE_META = {
@@ -690,6 +691,11 @@ window.VOSTOK_SEED_ORDERS = (function () {
     const paymentMethod = i % 5 === 0 ? "cash" : "card";
 
     let status = "completed";
+    let paymentStatus = "paid";
+    let refundReason = "";
+    let refundType = "";
+    let refundAmount = 0;
+    let writeoffCost = 0;
     if (i === 1) status = "new";
     else if (i === 2 || i === 3) status = "cooking";
     else if (i === 4 || i === 5) status = "ready";
@@ -707,6 +713,21 @@ window.VOSTOK_SEED_ORDERS = (function () {
     const total = d1.price * q1 + d2.price * q2;
     const isDone = ["ready", "delivering", "completed"].includes(status);
 
+    if (num === 198) {
+      status = "refunded";
+      paymentStatus = "refunded";
+      refundReason = "Посторонний предмет в блюде (волос и т.д.)";
+      refundType = "money_refund";
+      refundAmount = total;
+      writeoffCost = Math.round(total * 0.34);
+    } else if (num === 196) {
+      status = "cooking";
+      refundReason = "Не устроил вкус или качество приготовления блюда (пересол / недожар)";
+      refundType = "remake_dish";
+      refundAmount = 0;
+      writeoffCost = Math.round(total * 0.34);
+    }
+
     list.push({
       id: `ord-${num}`,
       number: num,
@@ -714,12 +735,20 @@ window.VOSTOK_SEED_ORDERS = (function () {
       phone,
       type,
       address,
-      comment: i % 7 === 0 ? "Побольше салфеток и горячую лепёшку" : "",
+      comment: num === 198
+        ? "[ВОЗВРАТ: Посторонний предмет в блюде (волос и т.д.) • Возврат денег клиенту]"
+        : num === 196
+          ? "[ПЕРЕДЕЛКА БРАКА: Не устроил вкус или качество приготовления блюда]"
+          : i % 7 === 0 ? "Побольше салфеток и горячую лепёшку" : "",
       paymentMethod,
-      paymentStatus: "paid",
+      paymentStatus,
       transactionId: `TX-${884000 + i}`,
       status,
       total,
+      refundReason,
+      refundType,
+      refundAmount,
+      writeoffCost,
       courierName: type === "delivery" ? (i % 2 === 0 ? "Ерлан Нурланов" : "Дастан Алиев") : "",
       createdAt,
       items: [
@@ -825,7 +854,7 @@ window.saveSharedDb = function (dbPatch) {
   } catch (_) {}
 };
 
-// Ответ ИИ-ассистента (через Supabase Edge Function vostok-ai + сверхбыстрый ответ по живым данным БД)
+// Ответ ИИ-ассистента (через Supabase Edge Function vostok-ai + глубокий аналитический ответ по живым данным БД)
 window.callVostokAi = async function ({ sbUrl, sbKey, aiFn, systemPrompt, history, userText, dbSnapshot }) {
   const urlBase = (sbUrl || window.VOSTOK_DEFAULT_SB_URL).replace(/\/+$/, "");
   const key = sbKey || window.VOSTOK_DEFAULT_SB_KEY;
@@ -833,7 +862,7 @@ window.callVostokAi = async function ({ sbUrl, sbKey, aiFn, systemPrompt, histor
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3500);
+    const timer = setTimeout(() => controller.abort(), 7500);
     const res = await fetch(`${urlBase}/functions/v1/${fn}`, {
       method: "POST",
       headers: {
@@ -842,23 +871,24 @@ window.callVostokAi = async function ({ sbUrl, sbKey, aiFn, systemPrompt, histor
       },
       body: JSON.stringify({
         systemPrompt,
-        history: (history || []).slice(-6)
+        history: (history || []).slice(-8)
       }),
       signal: controller.signal
     });
     clearTimeout(timer);
     const data = await res.json().catch(() => ({}));
     if (res.ok && data?.reply) {
-      const rLow = data.reply.toLowerCase();
+      const rText = String(data.reply).trim();
+      const rLow = rText.toLowerCase();
       const isHydroReply = rLow.includes("гидропост") || rLow.includes("ертіс") || rLow.includes("бекет") || rLow.includes("шүлбі");
-      if (!isHydroReply) {
-        return { reply: data.reply, source: `Supabase Edge (${fn})` };
+      // Проверяем, что ответ не оборвался на полуслове (не короче 70 символов)
+      if (!isHydroReply && rText.length >= 70) {
+        return { reply: rText, source: `Supabase Edge (${fn})` };
       }
     }
   } catch (_) {}
 
-  // Если облачная Edge Function ещё не развернута или ключ в Google Cloud требует активации —
-  // формируем точный ответ напрямую по живым данным базы данных (меню, цены в ₸, промокоды, заказы, склад)
+  // Продуманный и информативный ответ напрямую по живым данным базы данных (меню, цены в ₸, промокоды, заказы, возвраты, склад)
   const q = (userText || "").toLowerCase();
   const prods = (dbSnapshot?.products || window.VOSTOK_SEED_PRODUCTS).filter((p) => p.is_available);
   const stopped = (dbSnapshot?.products || []).filter((p) => !p.is_available);
@@ -867,46 +897,64 @@ window.callVostokAi = async function ({ sbUrl, sbKey, aiFn, systemPrompt, histor
   const isStaff = Boolean(dbSnapshot?.isStaff);
 
   if (isStaff) {
-    const revenue = orders.filter((o) => o.status !== "cancelled").reduce((s, o) => s + Number(o.total || 0), 0);
+    const validOrds = orders.filter((o) => o.status !== "cancelled" && o.status !== "refunded");
+    const refundedOrds = orders.filter((o) => o.status === "refunded" || Number(o.refundAmount || 0) > 0);
+    const revenue = validOrds.reduce((s, o) => s + Number(o.total || 0), 0);
+    const refundLoss = refundedOrds.reduce((s, o) => s + Number(o.refundAmount || o.total || 0), 0);
+    const writeoffLoss = refundedOrds.reduce((s, o) => s + Number(o.writeoffCost || Math.round((o.total || 0) * 0.32)), 0);
     const activeOrders = orders.filter((o) => ["new", "cooking", "ready", "delivering"].includes(o.status));
     const lowInv = inventory.filter((i) => Number(i.qty) <= Number(i.min));
-    if (q.includes("склад") || q.includes("остат") || q.includes("продукт")) {
+    if (q.includes("склад") || q.includes("остат") || q.includes("продукт") || q.includes("закуп")) {
       return {
         reply:
-          `**Анализ склада из базы данных Supabase:**\n` +
-          inventory.map((i) => `- **${i.name}**: \`${Number(i.qty).toFixed(1)} ${i.unit}\` (мин. порог ${i.min} ${i.unit})${Number(i.qty) <= Number(i.min) ? " — *требуется пополнение!*" : ""}`).join("\n") +
-          (lowInv.length ? `\n\nВнимание: критический остаток по **${lowInv.length} поз.** (${lowInv.map((x) => x.name).join(", ")}).` : "\n\nВсе позиции выше минимального порога."),
+          `**Детальный анализ склада и закупочной стоимости из БД Supabase:**\n\n` +
+          inventory.map((i) => `- **${i.sku || "ING"} • ${i.name}**: остаток \`${Number(i.qty).toFixed(1)} ${i.unit}\` по цене \`${window.fmtKZT(i.cost || 1500)}/${i.unit}\` (сумма: **${window.fmtKZT(Math.round(Number(i.qty) * Number(i.cost || 1500)))}**)${Number(i.qty) <= Number(i.min) ? " — ⚠️ *критический остаток, требуется автозаказ поставщику " + (i.supplier || "") + "!*" : ""}`).join("\n") +
+          (lowInv.length ? `\n\n**Рекомендация ИИ:** срочно отправьте заявку поставщикам по **${lowInv.length} поз.** (${lowInv.map((x) => x.name).join(", ")}), чтобы избежать постановки блюд на стоп-лист.` : "\n\n**Вывод ИИ:** Все позиции выше минимального лимита, запасов достаточно для бесперебойной работы кухни."),
         source: "Live DB Analyzer"
       };
     }
     return {
       reply:
-        `**Оперативная сводка «ВОСТОК ХАУС» по данным БД:**\n` +
-        `- **Выручка смены:** \`${window.fmtKZT(revenue)}\` (всего заказов в базе: **${orders.length}**)\n` +
-        `- **Активных заказов в работе:** **${activeOrders.length}** (${activeOrders.map((o) => `#${o.number} — ${window.VOSTOK_STATUS_META[o.status]?.label}`).join(", ") || "очередь пуста"})\n` +
-        `- **Блюд в меню:** **${prods.length}** в продаже, **${stopped.length}** на стоп-листе\n` +
-        `- **Критичных позиций на складе:** **${lowInv.length}** (${lowInv.map((i) => `${i.name}: ${i.qty} ${i.unit}`).join(", ") || "нет"})`,
+        `**Аналитическая и бухгалтерская сводка «ВОСТОК ХАУС» по базе данных:**\n\n` +
+        `1. **Выручка (Оборот):** \`${window.fmtKZT(revenue)}\` (успешных заказов: **${validOrds.length}**, средний чек: \`${window.fmtKZT(validOrds.length ? Math.round(revenue / validOrds.length) : 0)}\`)\n` +
+        `2. **Себестоимость сырья (Food Cost 32%):** \`-${window.fmtKZT(Math.round(revenue * 0.32))}\`\n` +
+        `3. **Возвраты и брак блюд:** **${refundedOrds.length} инцидентов** (возврат средств клиентам: \`-${window.fmtKZT(refundLoss)}\`, убыток от списания продуктов: \`-${window.fmtKZT(writeoffLoss)}\`)\n` +
+        `4. **Операционная нагрузка:** сейчас в работе **${activeOrders.length} активных заказов** (${activeOrders.map((o) => `#${o.number} — ${window.VOSTOK_STATUS_META[o.status]?.label}`).join(", ") || "очередь свободна"})\n` +
+        `5. **Контроль меню и склада:** в продаже **${prods.length} блюд** (на стопе: **${stopped.length}**), критических позиций сырья: **${lowInv.length}**.`,
       source: "Live DB Analyzer"
     };
   }
 
   // Ответы для клиента по данным базы
+  if (q.includes("возврат") || q.includes("волос") || q.includes("претенз") || q.includes("брак") || q.includes("не устро")) {
+    return {
+      reply:
+        `**Гарантия качества «ВОСТОК ХАУС» — мгновенный возврат или переделка блюда:**\n\n` +
+        `Если в блюде обнаружен посторонний предмет (например, волос), блюдо остыло или не устроило по качеству:\n` +
+        `1. Откройте раздел **«📋 Мои заказы»** в верхней шапке сайта.\n` +
+        `2. Нажмите кнопку **«⚠️ Оформить возврат / Претензия по качеству»** напротив вашего заказа.\n` +
+        `3. Выберите причину (*посторонний предмет / волос*, *не устроил вкус или температура*, *ошибка комплектации*) и решение: **100% возврат денег на карту** или **срочная бесплатная переделка блюда за счёт заведения**.\n\n` +
+        `Заявка мгновенно поступает в Бухгалтерию и на Кухню KDS для возврата средств и списания брака!`,
+      source: "Live DB"
+    };
+  }
+
   if (q.includes("статус") || q.includes("заказ") || q.includes("где мой")) {
     const latest = dbSnapshot?.trackedOrder || orders[0];
     if (!latest) {
       return {
-        reply: "В базе данных пока нет ваших активных заказов. Выберите блюда в меню и оформите заказ на **Доставку** или **В зале (свободная посадка)**!",
+        reply: "В вашей личной истории пока нет активных заказов. Выберите блюда в меню, нажмите **«В корзину +»** и оформите заказ на **Доставку** (за 35–45 минут) или **В зале (свободная посадка)**!",
         source: "Live DB"
       };
     }
     const st = window.VOSTOK_STATUS_META[latest.status]?.label || latest.status;
     return {
       reply:
-        `**Данные вашего заказа #${latest.number} из базы:**\n` +
-        `- **Статус:** **${st}**\n` +
-        `- **Формат:** ${latest.type === "delivery" ? `Доставка (${latest.address})` : "В зале (свободная посадка — займите любой свободный столик)"}\n` +
-        `- **Состав:** ${(latest.items || []).map((i) => `${i.name} (${i.size}) ×${i.qty}`).join(", ")}\n` +
-        `- **Сумма:** \`${window.fmtKZT(latest.total)}\``,
+        `**Подробная информация по вашему заказу #${latest.number} из базы данных:**\n\n` +
+        `- **Текущий статус:** **${st}**\n` +
+        `- **Формат получения:** ${latest.type === "delivery" ? `Доставка по адресу: ${latest.address}` : "В зале (свободная посадка — займите любой свободный столик)"}\n` +
+        `- **Состав заказа:** ${(latest.items || []).map((i) => `**${i.name}** (${i.size || "Стандарт"}) ×${i.qty}`).join(", ")}\n` +
+        `- **Итоговая сумма:** \`${window.fmtKZT(latest.total)}\`${latest.refundReason ? `\n- **Статус претензии:** Оформлен возврат (${latest.refundReason})` : ""}`,
       source: "Live DB"
     };
   }
@@ -914,9 +962,10 @@ window.callVostokAi = async function ({ sbUrl, sbKey, aiFn, systemPrompt, histor
   if (q.includes("промо") || q.includes("скидк") || q.includes("акци")) {
     return {
       reply:
-        `**Актуальные промокоды в нашей базе данных:**\n` +
-        window.VOSTOK_PROMOS.map((p) => `- \`${p.code}\` — **-${p.discount}%** при заказе от \`${window.fmtKZT(p.min)}\``).join("\n") +
-        `\n\nВведите любой из них в корзине перед оплатой!`,
+        `**Действующие промокоды и акции в базе данных «ВОСТОК ХАУС»:**\n\n` +
+        `- \`START15\` — **скидка 15%** на первый заказ (от \`2 500 ₸\`)\n` +
+        window.VOSTOK_PROMOS.map((p) => `- \`${p.code}\` — **скидка ${p.discount}%** при заказе от \`${window.fmtKZT(p.min)}\` (${p.desc})`).join("\n") +
+        `\n\n**Совет от Восток AI:** введите промокод в правой колонке **«Ваш заказ»** и нажмите **«ОК»** — итоговая сумма в тенге пересчитается автоматически!`,
       source: "Live DB"
     };
   }
@@ -924,43 +973,38 @@ window.callVostokAi = async function ({ sbUrl, sbKey, aiFn, systemPrompt, histor
   if (q.includes("сет") || q.includes("компани") || q.includes("10") || q.includes("собери")) {
     const plov = prods.find((p) => p.category_slug === "plov") || prods[0];
     const grill = prods.find((p) => p.category_slug === "grill") || prods[1];
-    const bakery = prods.find((p) => p.category_slug === "bakery") || prods[2];
+    const manti = prods.find((p) => p.category_slug === "manti") || prods[2];
+    const bakery = prods.find((p) => p.category_slug === "bakery") || prods[3];
     const drink = prods.find((p) => p.category_slug === "drinks") || prods[prods.length - 1];
-    const sum = (plov?.base_price || 0) + (grill?.base_price || 0) + (bakery?.base_price || 0) + (drink?.base_price || 0);
+    const sum = (plov?.base_price || 0) + (grill?.base_price || 0) + (manti?.base_price || 0) + (bakery?.base_price || 0) + (drink?.base_price || 0);
+    const withPromo = Math.round(sum * 0.8);
     return {
       reply:
-        `**Рекомендуемый сет по текущему меню из базы данных:**\n` +
-        `1. **${plov?.name}** — \`${window.fmtKZT(plov?.base_price)}\`\n` +
-        `2. **${grill?.name}** — \`${window.fmtKZT(grill?.base_price)}\`\n` +
-        `3. **${bakery?.name}** — \`${window.fmtKZT(bakery?.base_price)}\`\n` +
-        `4. **${drink?.name}** — \`${window.fmtKZT(drink?.base_price)}\`\n` +
-        `\n**Итого:** \`${window.fmtKZT(sum)}\` (с промокодом \`PLOV20\` или \`VOSTOK10\` будет ещё выгоднее!).`,
+        `**Сбалансированный восточный сет на компанию до 10 000 ₸ (по данным живого меню):**\n\n` +
+        `1. 🍛 **${plov?.name}** (${plov?.weight} г, ${plov?.calories} ккал) — \`${window.fmtKZT(plov?.base_price)}\`\n` +
+        `   *Почему стоит взять:* рассыпчатый рис девзира с томлёной бараниной, нутом и казы.\n` +
+        `2. 🍢 **${grill?.name}** (${grill?.weight} г) — \`${window.fmtKZT(grill?.base_price)}\`\n` +
+        `   *Почему стоит взять:* сочное мясо на саксауле с дымком и гранатовым соусом Наршараб.\n` +
+        `3. 🍜 **${manti?.name}** (${manti?.weight} г) — \`${window.fmtKZT(manti?.base_price)}\`\n` +
+        `4. 🥟 **${bakery?.name}** (${bakery?.weight} г) — \`${window.fmtKZT(bakery?.base_price)}\`\n` +
+        `5. 🫖 **${drink?.name}** (${drink?.weight} мл) — \`${window.fmtKZT(drink?.base_price)}\`\n\n` +
+        `**Сумма без скидки:** \`${window.fmtKZT(sum)}\`\n` +
+        `**Со скидкой -20% по промокоду \`PLOV20\`:** всего **\`${window.fmtKZT(withPromo)}\`**!`,
       source: "Live DB"
     };
   }
 
-  if (q.includes("остр") || q.includes("вег") || q.includes("без мяс")) {
-    const spicy = prods.filter((p) => p.is_spicy);
-    const veg = prods.filter((p) => p.is_veg);
-    return {
-      reply:
-        `**Выборка из базы меню «ВОСТОК ХАУС»:**\n` +
-        `**Острые блюда (${spicy.length}):**\n` +
-        spicy.map((p) => `- **${p.name}** — \`${window.fmtKZT(p.base_price)}\``).join("\n") +
-        `\n\n**Вегетарианские / без мяса (${veg.length}):**\n` +
-        veg.map((p) => `- **${p.name}** — \`${window.fmtKZT(p.base_price)}\``).join("\n"),
-      source: "Live DB"
-    };
-  }
-
-  const hits = prods.filter((p) => p.is_hit).slice(0, 6);
+  // Развёрнутый ответ по меню и хитам с описанием категорий и состава
+  const hits = prods.filter((p) => p.is_hit);
   return {
     reply:
-      `**Сейчас в базе меню «ВОСТОК ХАУС» доступно ${prods.length} блюд (100% Халяль).**\n` +
-      `Главные хиты сегодня:\n` +
-      hits.map((p) => `- **${p.name}** (${p.weight} г) — \`${window.fmtKZT(p.base_price)}\``).join("\n") +
-      (stopped.length ? `\n\n*Временно на стопе:* ${stopped.map((s) => s.name).join(", ")}.` : "") +
-      `\n\nВы можете заказать **Доставку** или выбрать режим **«В зале»** (бронь столов не нужна — свободная посадка).`,
+      `**Ассаламу алейкум! Сейчас в базе данных «ВОСТОК ХАУС» доступно ${prods.length} блюд (100% Халяль):**\n\n` +
+      `**🔥 Главные хиты нашего казана, тандыра и мангала:**\n` +
+      hits.slice(0, 7).map((p, i) => `${i + 1}. **${p.name}** (${p.weight} г • ${p.calories} ккал) — **\`${window.fmtKZT(p.base_price)}\`**\n   *Состав:* ${p.description}`).join("\n") +
+      (stopped.length ? `\n\n*Временно на стоп-листе:* ${stopped.map((s) => s.name).join(", ")}.` : "\n\n*Все блюда из меню сейчас в наличии на кухне!*") +
+      `\n\n**💡 Рекомендация Восток AI:**\n` +
+      `- К плову отлично подойдёт **Салат Ачичук с ташкентскими томатами** (\`1 190 ₸\`) и **Чай «Шёлковый путь» с кристаллами сахара Нават** (\`1 290 ₸\`).\n` +
+      `- Используйте промокод \`START15\` для скидки **-15%** на первый заказ или \`PLOV20\` для скидки **-20%** при заказе от \`6 000 ₸\`!`,
     source: "Live DB"
   };
 };

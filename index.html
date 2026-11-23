@@ -198,6 +198,11 @@
       cardCvv: "777",
       lastPaymentResult: null,
       pendingCheckout: null,
+      // Возврат / претензия по качеству блюда (например, волос или не устроило блюдо)
+      refundModalOrder: null,
+      refundReasonPick: "Посторонний предмет в блюде (волос и т.д.)",
+      refundCommentText: "",
+      refundSolutionPick: "money_refund", // 'money_refund' | 'remake_dish'
       // Подключение Supabase
       sbUrl: initialCfg.url,
       sbKey: initialCfg.key,
@@ -313,6 +318,10 @@
             transactionId: o.transaction_id || "",
             status: o.status || "new",
             total: Number(o.total_amount || 0),
+            refundReason: o.refund_reason || "",
+            refundType: o.refund_type || "",
+            refundAmount: Number(o.refund_amount || 0),
+            writeoffCost: Number(o.writeoff_cost || 0),
             createdAt: o.created_at ? new Date(o.created_at).getTime() : Date.now(),
             items: Array.isArray(o.items) ? o.items : []
           }));
@@ -410,24 +419,27 @@
                 </div>
               </div>
 
-              <!-- Выбор адреса доставки / Формата заказа -->
-              <div class="flex items-center gap-2.5">
-                <span class="text-sky-600 text-lg">📍</span>
-                <div>
-                  <div class="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
-                    <span>${state.deliveryType === "delivery" ? "Выбор адреса доставки" : "Заказ в зале (свободная посадка)"}</span>
-                    <button type="button" data-del="${state.deliveryType === "delivery" ? "dine_in" : "delivery"}" class="del-btn text-sky-600 hover:underline font-bold">
-                      (${state.deliveryType === "delivery" ? "Переключить: В зале" : "Переключить: Доставка"})
-                    </button>
-                  </div>
-                  ${state.deliveryType === "delivery" ? `
-                    <input id="addr-input" type="text" value="${state.address}" placeholder="Казахстан, г. Семей, ул. Космонавтов, 12" class="mt-0.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 w-64 sm:w-80 focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                  ` : `
-                    <div class="mt-0.5 px-3 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
-                      🍽️ В зале: свободная посадка (найдите любой свободный столик сами)
-                    </div>
-                  `}
+              <!-- Заметный переключатель режима: Доставка / В зале (свободная посадка) + Адрес -->
+              <div class="flex flex-wrap items-center gap-3 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200">
+                <div class="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200/80 text-xs font-extrabold gap-1">
+                  <button type="button" data-del="delivery" class="del-btn px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 ${state.deliveryType === "delivery" ? "bg-sky-600 text-white shadow" : "text-slate-600 hover:bg-slate-100"}">
+                    <span>🚚</span><span>Доставка</span>
+                  </button>
+                  <button type="button" data-del="dine_in" class="del-btn px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 ${state.deliveryType === "dine_in" ? "bg-amber-500 text-slate-950 shadow font-black" : "text-slate-600 hover:bg-slate-100"}">
+                    <span>🍽️</span><span>В зале (свободная посадка)</span>
+                  </button>
                 </div>
+
+                ${state.deliveryType === "delivery" ? `
+                  <div class="flex items-center gap-2 pr-2">
+                    <span class="text-sky-600 text-base">📍</span>
+                    <input id="addr-input" type="text" value="${state.address}" placeholder="Казахстан, г. Семей, ул. Космонавтов, 12" class="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs font-extrabold text-slate-900 w-60 sm:w-72 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm" />
+                  </div>
+                ` : `
+                  <div class="px-3.5 py-1.5 rounded-xl bg-amber-100 border-2 border-amber-400 text-xs font-extrabold text-amber-950 flex items-center gap-1.5 shadow-sm">
+                    <span>✨</span><span>Свободная посадка: займите любой свободный столик в зале сами!</span>
+                  </div>
+                `}
               </div>
 
               <div class="hidden xl:block pl-3 border-l border-slate-200 text-xs">
@@ -473,10 +485,7 @@
                 ${[
                   { id: "menu",     label: state.lang === "KZ" ? "Мәзір" : "Меню" },
                   { id: "promos",   label: state.lang === "KZ" ? "Акциялар" : "Акции" },
-                  { id: "delivery", label: state.lang === "KZ" ? "Жеткізу және төлем" : "Доставка и оплата" },
-                  { id: "about",    label: state.lang === "KZ" ? "Біз туралы" : "О нас" },
-                  { id: "reviews",  label: state.lang === "KZ" ? "Пікірлер" : "Отзывы" },
-                  { id: "contacts", label: state.lang === "KZ" ? "Байланыс" : "Контакты" }
+                  { id: "delivery", label: state.lang === "KZ" ? "Жеткізу және төлем" : "Доставка и оплата" }
                 ].map((n) => `
                   <button type="button" data-topnav="${n.id}" class="topnav-btn whitespace-nowrap transition pb-1 ${state.topNav === n.id ? "text-sky-600 border-b-2 border-sky-600 font-extrabold" : "text-slate-700 hover:text-sky-600"}">
                     ${n.label}
@@ -616,80 +625,91 @@
               </div>
             </div>
 
-            <!-- ПРАВАЯ ЗАКРЕПЛЁННАЯ КОЛОНКА «ВАШ ЗАКАЗ» (МАКЕТ #4) -->
-            <aside class="lg:col-span-3 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/90 sticky top-28 space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="font-black text-base text-slate-900">Ваш заказ</h3>
-                <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold">${count} поз.</span>
+            <!-- ПРАВАЯ ЗАКРЕПЛЁННАЯ КОЛОНКА «ВАШ ЗАКАЗ» (УЛУЧШЕННАЯ ВЁРСТКА БЕЗ ОБРЕЗКИ НАЗВАНИЙ) -->
+            <aside class="lg:col-span-3 bg-white rounded-3xl p-5 shadow-md border border-slate-200/90 sticky top-28 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                <div>
+                  <h3 class="font-black text-lg text-slate-900 leading-none">Ваш заказ</h3>
+                  <div class="text-[11px] text-slate-400 font-semibold mt-1">${state.deliveryType === "delivery" ? "Быстрая доставка" : "Заказ в зале"}</div>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-xs font-black">${count} поз.</span>
               </div>
 
-              <!-- Переключатель Доставка / В зале -->
-              <div class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
-                <button type="button" data-del="delivery" class="del-btn py-1.5 rounded-lg transition ${state.deliveryType === "delivery" ? "bg-white shadow text-slate-900" : "text-slate-500"}">
+              <!-- Заметный переключатель Доставка / В зале -->
+              <div class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-2xl text-xs font-extrabold">
+                <button type="button" data-del="delivery" class="del-btn py-2 rounded-xl transition ${state.deliveryType === "delivery" ? "bg-sky-600 text-white shadow" : "text-slate-600 hover:text-slate-900"}">
                   🚚 Доставка
                 </button>
-                <button type="button" data-del="dine_in" class="del-btn py-1.5 rounded-lg transition ${state.deliveryType === "dine_in" ? "bg-white shadow text-slate-900" : "text-slate-500"}">
+                <button type="button" data-del="dine_in" class="del-btn py-2 rounded-xl transition ${state.deliveryType === "dine_in" ? "bg-amber-500 text-slate-950 shadow font-black" : "text-slate-600 hover:text-slate-900"}">
                   🍽️ В зале
                 </button>
               </div>
 
               ${state.cart.length === 0 ? `
-                <div class="py-10 text-center space-y-2">
+                <div class="py-10 text-center space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                   <div class="text-3xl">🍛</div>
-                  <div class="text-xs font-bold text-slate-500">Ваша корзина пока пуста</div>
-                  <div class="text-[11px] text-slate-400">Нажмите «В корзину +» на любом блюде слева</div>
+                  <div class="text-xs font-bold text-slate-600">Ваша корзина пока пуста</div>
+                  <div class="text-[11px] text-slate-400 px-4">Нажмите «В корзину +» на любом блюде слева</div>
                 </div>
               ` : `
-                <div class="space-y-3 max-h-80 overflow-y-auto pr-1 divide-y divide-slate-100">
+                <div class="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
                   ${state.cart.map((item, idx) => `
-                    <div class="pt-3 first:pt-0 flex items-start gap-2.5">
-                      <img src="${item.image}" class="w-12 h-12 rounded-xl object-cover bg-slate-100 shrink-0" />
+                    <div class="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex gap-3 items-start hover:border-slate-300 transition">
+                      <img src="${item.image}" class="w-14 h-14 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-sm" />
                       <div class="flex-1 min-w-0">
-                        <div class="font-bold text-xs text-slate-900 leading-snug truncate">${item.name}</div>
-                        <div class="text-[11px] text-slate-400">${item.qty} шт. • ${item.size}</div>
-                        ${item.addons?.length ? `<div class="text-[10px] text-sky-600 truncate">+ ${item.addons.join(", ")}</div>` : ""}
-                        <div class="flex items-center gap-1.5 mt-1.5">
-                          <button type="button" data-cdec="${idx}" class="cdec-btn w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-xs">-</button>
-                          <span class="text-xs font-extrabold px-1">${item.qty}</span>
-                          <button type="button" data-cinc="${idx}" class="cinc-btn w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-xs">+</button>
+                        <div class="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2">${item.name}</div>
+                        <div class="text-[11px] text-slate-500 font-medium mt-0.5">${item.size} • ${item.base}</div>
+                        ${item.addons?.length ? `<div class="text-[10px] text-sky-700 font-semibold mt-0.5">+ ${item.addons.join(", ")}</div>` : ""}
+                        <div class="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-slate-200/70">
+                          <div class="inline-flex items-center bg-white rounded-xl border border-slate-200 p-0.5 shadow-sm">
+                            <button type="button" data-cdec="${idx}" class="cdec-btn w-6 h-6 rounded-lg hover:bg-slate-100 font-black text-xs text-slate-700">-</button>
+                            <span class="text-xs font-black px-2 text-slate-900">${item.qty}</span>
+                            <button type="button" data-cinc="${idx}" class="cinc-btn w-6 h-6 rounded-lg hover:bg-slate-100 font-black text-xs text-slate-700">+</button>
+                          </div>
+                          <div class="font-black text-sm text-slate-900">${fmt(item.price * item.qty)}</div>
                         </div>
-                      </div>
-                      <div class="text-right shrink-0">
-                        <div class="font-extrabold text-xs text-slate-900">${fmt(item.price * item.qty)}</div>
                       </div>
                     </div>
                   `).join("")}
                 </div>
 
-                <!-- Поле промокода точно как на макете #4 -->
-                <div class="pt-2 border-t border-slate-100 space-y-1.5">
+                <!-- Поле промокода -->
+                <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                  <div class="text-[11px] font-extrabold text-slate-600 flex items-center justify-between">
+                    <span>🎁 Промокод на скидку</span>
+                    <span class="text-[10px] text-sky-600 font-bold">START15 • PLOV20</span>
+                  </div>
                   <div class="flex gap-1.5">
-                    <input id="promo-input" type="text" value="${state.promoCode}" placeholder="Введите промокод (START15)" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs uppercase font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                    <button id="apply-promo-btn" type="button" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">ОК</button>
+                    <input id="promo-input" type="text" value="${state.promoCode}" placeholder="Например: START15" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs uppercase font-extrabold focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                    <button id="apply-promo-btn" type="button" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold shrink-0">Применить</button>
                   </div>
                   ${state.promoError ? `<div class="text-[11px] text-rose-600 font-semibold">${state.promoError}</div>` : ""}
-                  ${state.appliedPromo ? `<div class="text-[11px] text-emerald-700 font-bold">✓ Промокод ${state.appliedPromo.code}: -${state.appliedPromo.discount}% (-${fmt(discount)})</div>` : ""}
+                  ${state.appliedPromo ? `<div class="text-[11px] text-emerald-700 font-bold">✓ Скидка ${state.appliedPromo.code}: -${state.appliedPromo.discount}% (-${fmt(discount)})</div>` : ""}
                 </div>
 
                 <!-- Выбор даты и времени заказа прямо в правой колонке для проверки аналитики -->
-                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 space-y-1">
-                  <label class="block text-[10px] font-extrabold text-sky-900 uppercase">
-                    📅 Дата и время заказа (для аналитики)
+                <div class="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 space-y-1.5">
+                  <label class="block text-[11px] font-extrabold text-sky-900">
+                    📅 Дата и время заказа (тест аналитики)
                   </label>
-                  <input id="sidebar-datetime" type="datetime-local" value="${state.customOrderDateTime || toLocalInputDateTime()}" class="w-full px-2.5 py-1.5 rounded-lg border border-sky-300 text-xs font-bold bg-white text-slate-900" />
+                  <input id="sidebar-datetime" type="datetime-local" value="${state.customOrderDateTime || toLocalInputDateTime()}" class="w-full px-3 py-2 rounded-xl border border-sky-300 text-xs font-extrabold bg-white text-slate-900 shadow-sm" />
                 </div>
 
                 <!-- Итого и синяя кнопка «Оформить заказ» -->
-                <div class="pt-2 border-t border-slate-100 space-y-1">
-                  ${discount > 0 ? `<div class="flex justify-between text-xs text-emerald-600 font-bold"><span>Скидка:</span><span>-${fmt(discount)}</span></div>` : ""}
-                  <div class="flex justify-between items-baseline">
-                    <span class="font-bold text-sm text-slate-700">Итого:</span>
-                    <span class="font-black text-xl text-slate-900">${fmt(total)}</span>
+                <div class="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5">
+                  <div class="flex justify-between text-xs text-slate-300">
+                    <span>Сумма блюд (${count} шт.):</span>
+                    <span class="font-bold">${fmt(subtotal)}</span>
+                  </div>
+                  ${discount > 0 ? `<div class="flex justify-between text-xs text-emerald-400 font-bold"><span>Скидка по промокоду:</span><span>-${fmt(discount)}</span></div>` : ""}
+                  <div class="flex justify-between items-baseline pt-1.5 border-t border-slate-700">
+                    <span class="font-extrabold text-sm">Итого к оплате:</span>
+                    <span class="font-black text-xl text-amber-400">${fmt(total)}</span>
                   </div>
                 </div>
 
-                <button id="open-checkout-btn" type="button" class="w-full py-3.5 rounded-full bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-sm shadow-md transition">
-                  Оформить заказ
+                <button id="open-checkout-btn" type="button" class="w-full py-3.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-black text-sm shadow-lg transition">
+                  Оформить заказ →
                 </button>
               `}
             </aside>
@@ -990,7 +1010,7 @@
         `;
       }
 
-      // 5. Личная история заказов текущего клиента
+      // 5. Личная история заказов текущего клиента + кнопка Возврата / Претензии
       if (state.myOrdersOpen) {
         const myOrders = getMyOrders();
         html += `
@@ -1011,7 +1031,7 @@
                     <div class="text-xs text-slate-400">Оформите заказ в правой колонке — здесь отображаются только ваши личные заказы.</div>
                   </div>
                 ` : myOrders.map((o) => `
-                  <div class="p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <div class="p-4 rounded-2xl border ${o.status === "refunded" ? "border-rose-300 bg-rose-50/40" : "border-slate-200"} space-y-2">
                     <div class="flex items-center justify-between">
                       <span class="font-extrabold text-base">Заказ #${o.number}</span>
                       <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_META[o.status]?.color || "bg-slate-100"}">
@@ -1027,15 +1047,87 @@
                     <div class="text-xs text-slate-700">
                       ${(o.items || []).map((i) => `${i.name} × ${i.qty}`).join(", ")}
                     </div>
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                    ${o.refundReason ? `
+                      <div class="p-2.5 rounded-xl bg-rose-100/80 border border-rose-200 text-xs text-rose-900">
+                        <b>⚠️ Оформлена претензия / возврат:</b> ${o.refundReason}<br>
+                        <span class="text-[11px]">${o.refundType === "remake_dish" ? "🔄 Заказ передан на бесплатную переделку на кухню KDS" : `💸 Возврат средств клиенту: ${fmt(o.refundAmount || o.total)}`}</span>
+                      </div>
+                    ` : ""}
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
                       <span class="font-extrabold text-sm text-sky-600">${fmt(o.total)}</span>
-                      <button data-track="${o.id}" class="track-ord-btn text-xs font-bold text-slate-700 hover:text-sky-600">
-                        Показать на трекере →
-                      </button>
+                      <div class="flex items-center gap-2">
+                        ${o.status !== "refunded" ? `
+                          <button type="button" data-refundord="${o.id}" class="refund-ord-btn px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-[11px] font-extrabold text-rose-700">
+                            ⚠️ Возврат / Проблема с блюдом
+                          </button>
+                        ` : ""}
+                        <button type="button" data-track="${o.id}" class="track-ord-btn text-xs font-bold text-slate-700 hover:text-sky-600">
+                          Трекер →
+                        </button>
+                      </div>
                     </div>
                   </div>
                 `).join("")}
               </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // 6. Модальное окно возврата блюда / претензии по качеству (например, волос в блюде или не устроило блюдо)
+      if (state.refundModalOrder) {
+        const ord = state.refundModalOrder;
+        const reasons = [
+          "Посторонний предмет в блюде (волос и т.д.)",
+          "Не устроил вкус или качество приготовления блюда",
+          "Блюдо приехало холодным / нарушена упаковка",
+          "Перепутали позицию или не положили добавку"
+        ];
+        html += `
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative my-8 border border-rose-200">
+              <button id="close-refund-modal" class="absolute top-5 right-5 w-9 h-9 rounded-full hover:bg-slate-100 font-bold">✕</button>
+              <span class="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 text-[11px] font-extrabold">Служба контроля качества • Возврат и списание</span>
+              <h2 class="text-xl font-black mt-2">Возврат блюда по заказу #${ord.number}</h2>
+              <p class="text-xs text-slate-500 mt-1">
+                Сумма заказа: <b>${fmt(ord.total)}</b> • Данные о возврате и списании продуктов сразу поступят в Бухгалтерию и на Кухню KDS.
+              </p>
+
+              <form id="refund-submit-form" class="space-y-4 mt-4">
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 mb-2">1. Укажите причину возврата:</label>
+                  <div class="space-y-1.5">
+                    ${reasons.map((r) => `
+                      <button type="button" data-refreason="${r}" class="refreason-btn w-full text-left px-3.5 py-2.5 rounded-xl border text-xs font-bold transition ${state.refundReasonPick === r ? "border-rose-500 bg-rose-50 text-rose-900" : "border-slate-200 text-slate-700 hover:bg-slate-50"}">
+                        ${state.refundReasonPick === r ? "● " : "○ "}${r}
+                      </button>
+                    `).join("")}
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 mb-2">2. Что вы хотите сделать?</label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button type="button" data-refsol="money_refund" class="refsol-btn p-3 rounded-2xl border-2 text-left transition ${state.refundSolutionPick === "money_refund" ? "border-rose-600 bg-rose-50" : "border-slate-200"}">
+                      <div class="font-extrabold text-xs text-rose-800">💸 Вернуть деньги (${fmt(ord.total)})</div>
+                      <div class="text-[11px] text-slate-600 mt-1">100% возврат оплаты на карту + акт списания брака в бухгалтерии</div>
+                    </button>
+                    <button type="button" data-refsol="remake_dish" class="refsol-btn p-3 rounded-2xl border-2 text-left transition ${state.refundSolutionPick === "remake_dish" ? "border-amber-500 bg-amber-50" : "border-slate-200"}">
+                      <div class="font-extrabold text-xs text-amber-900">🔄 Переделать блюдо бесплатно</div>
+                      <div class="text-[11px] text-slate-600 mt-1">Срочный заказ на кухню KDS + списание испорченных ингредиентов</div>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 mb-1">Дополнительный комментарий (необязательно)</label>
+                  <input id="refund-comment-inp" type="text" value="${state.refundCommentText}" placeholder="Опишите ситуацию подробнее..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs" />
+                </div>
+
+                <button type="submit" class="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm shadow-lg">
+                  Подтвердить возврат и отправить акт в Бухгалтерию
+                </button>
+              </form>
             </div>
           </div>
         `;
@@ -1262,6 +1354,75 @@
           render();
         };
       });
+
+      // Оформление возврата блюда клиентом (посторонний предмет / волос / не устроило блюдо)
+      document.querySelectorAll(".refund-ord-btn").forEach((b) => {
+        b.onclick = () => {
+          const found = state.orders.find((o) => String(o.id) === String(b.dataset.refundord));
+          if (found) {
+            state.refundModalOrder = found;
+            state.refundReasonPick = "Посторонний предмет в блюде (волос и т.д.)";
+            state.refundSolutionPick = "money_refund";
+            state.refundCommentText = "";
+            render();
+          }
+        };
+      });
+      const closeRefund = document.getElementById("close-refund-modal");
+      if (closeRefund) closeRefund.onclick = () => { state.refundModalOrder = null; render(); };
+      document.querySelectorAll(".refreason-btn").forEach((b) => {
+        b.onclick = () => { state.refundReasonPick = b.dataset.refreason; render(); };
+      });
+      document.querySelectorAll(".refsol-btn").forEach((b) => {
+        b.onclick = () => { state.refundSolutionPick = b.dataset.refsol; render(); };
+      });
+      const refCommentInp = document.getElementById("refund-comment-inp");
+      if (refCommentInp) refCommentInp.oninput = (e) => { state.refundCommentText = e.target.value; };
+      const refundForm = document.getElementById("refund-submit-form");
+      if (refundForm) {
+        refundForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const ord = state.refundModalOrder;
+          if (!ord) return;
+          const fullReason = state.refundCommentText.trim()
+            ? `${state.refundReasonPick} (${state.refundCommentText.trim()})`
+            : state.refundReasonPick;
+          const isMoneyRefund = state.refundSolutionPick === "money_refund";
+          const writeoffCost = Math.round(Number(ord.total || 0) * 0.35);
+
+          ord.status = isMoneyRefund ? "refunded" : "cooking";
+          ord.refundReason = fullReason;
+          ord.refundType = state.refundSolutionPick;
+          ord.refundAmount = isMoneyRefund ? Number(ord.total || 0) : 0;
+          ord.writeoffCost = writeoffCost;
+          if (!isMoneyRefund) {
+            ord.comment = `⚠️ ПЕРЕДЕЛКА ПО ГАРАНТИИ (${fullReason})`;
+          }
+
+          state.refundModalOrder = null;
+          persistLocal();
+
+          const sb = getSbClient();
+          if (sb) {
+            try {
+              await sb.from("orders").update({
+                status: ord.status,
+                refund_reason: ord.refundReason,
+                refund_type: ord.refundType,
+                refund_amount: ord.refundAmount,
+                writeoff_cost: ord.writeoffCost,
+                comment: ord.comment
+              }).eq("id", ord.id);
+            } catch (_) {}
+          }
+
+          notify(
+            isMoneyRefund
+              ? `Возврат ${fmt(ord.total)} по заказу #${ord.number} оформлен и проведён в Бухгалтерии!`
+              : `Заказ #${ord.number} отправлен на бесплатную срочную переделку на Кухню KDS!`
+          );
+        };
+      }
 
       const hideTracker = document.getElementById("hide-tracker-btn");
       if (hideTracker) hideTracker.onclick = () => { state.trackedOrderId = null; render(); };
